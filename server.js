@@ -9,7 +9,6 @@ const { Server } = require('socket.io');
 const dev = process.env.NODE_ENV !== 'production';
 const port = process.env.PORT ? Number(process.env.PORT) : 3000;
 
-// NEXT: use the host/port config defaults (do NOT hardcode localhost in production)
 const app = next({ dev });
 const handle = app.getRequestHandler();
 

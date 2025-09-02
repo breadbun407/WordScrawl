@@ -2,52 +2,56 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import io from 'socket.io-client';
+import { io } from 'socket.io-client';
 
 export const useSocket = () => {
     const socketRef = useRef(null);
     const [isConnected, setIsConnected] = useState(false);
-    const mountedRef = useRef(false);
 
     useEffect(() => {
-        if (socketRef.current) return; // already connected
+        if (socketRef.current) return; // already initialized
 
-        console.log('🔌 Creating socket connection...');
+        // Determine the backend URL
+        const SOCKET_URL =
+            process.env.NEXT_PUBLIC_SOCKET_URL || window.location.origin;
 
-        socketRef.current = io('http://localhost:3000', {
-            path: '/socket.io/',
-            transports: ['websocket', 'polling'],
+        console.log('🔌 Creating socket connection to:', SOCKET_URL);
+
+        socketRef.current = io(SOCKET_URL, {
+            path: '/socket.io',            // Must match server
+            transports: ['websocket'],     // Use only WebSocket for stability
+            autoConnect: true,
         });
 
-        socketRef.current.on('connect', () => {
-            console.log('✅ Socket connected:', socketRef.current.id);
+        const socket = socketRef.current;
+
+        // Connection events
+        socket.on('connect', () => {
+            console.log('✅ Socket connected:', socket.id);
             setIsConnected(true);
         });
 
-        socketRef.current.on('disconnect', (reason) => {
+        socket.on('disconnect', (reason) => {
             console.log('🔌 Socket disconnected:', reason);
             setIsConnected(false);
         });
 
-        socketRef.current.on('connect_error', (error) => {
+        socket.on('connect_error', (error) => {
             console.error('❌ Socket connection failed:', error);
             setIsConnected(false);
         });
 
-        // Cleanup only once (not during strict mode re-render)
+        // Cleanup on unmount
         return () => {
-            if (process.env.NODE_ENV === "production") {
-                console.log('🔌 Cleaning up socket (production only)...');
-                socketRef.current?.disconnect();
-                socketRef.current = null;
-                setIsConnected(false);
-            }
+            console.log('🔌 Cleaning up socket...');
+            socket.disconnect();
+            socketRef.current = null;
+            setIsConnected(false);
         };
     }, []);
 
-
     return {
         socket: socketRef.current,
-        isConnected: isConnected && socketRef.current?.connected
+        isConnected: isConnected && socketRef.current?.connected,
     };
 };
